@@ -1,0 +1,2 @@
+.error-card { max-width: 520px; margin: 60px auto; text-align: center; }
+.error-code { font-size: 64px; font-weight: bold; color: var(--primary); line-height: 1; }
