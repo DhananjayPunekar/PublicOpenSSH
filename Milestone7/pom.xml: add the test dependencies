@@ -42,4 +42,8 @@
   <artifactId>jakarta.el</artifactId>
   <version>3.0.4</version>
   <scope>test</scope>
-</dependency>
+Replace YOUR_SPRING_VERSION with the version on your spring-webmvc dependency, for example 5.3.39. If it uses ${spring.version}, use that.</dependency>
+
+
+
+
