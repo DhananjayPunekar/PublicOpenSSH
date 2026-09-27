@@ -6,3 +6,9 @@ If your WebAppInitializer extends AbstractAnnotationConfigDispatcherServletIniti
 protected void customizeRegistration(javax.servlet.ServletRegistration.Dynamic registration) {
     registration.setInitParameter("throwExceptionIfNoHandlerFound", "true");
 }
+
+
+
+If it implements WebApplicationInitializer and creates the dispatcher itself, add this line after ServletRegistration.Dynamic dispatcher = ...:
+
+dispatcher.setInitParameter("throwExceptionIfNoHandlerFound", "true");
