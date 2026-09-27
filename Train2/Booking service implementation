@@ -1,0 +1,4 @@
+@Override
+public Booking getBookingForUser(Long userId, Long bookingId) {
+    return getOwnedBooking(userId, bookingId);   // throws if not theirs
+}
