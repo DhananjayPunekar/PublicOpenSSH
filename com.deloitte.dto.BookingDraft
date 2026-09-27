@@ -1,0 +1,35 @@
+package com.deloitte.dto;
+
+import java.io.Serializable;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+public class BookingDraft implements Serializable {
+
+    private Long flightId;
+    private String flightNumber;
+    private LocalDate journeyDate;
+    private int totalPassengers;
+    private List<PassengerForm> passengers = new ArrayList<>();
+
+    // Which passenger screen we're on: 1, 2, 3...
+    public int getCurrentPassengerNumber() { return passengers.size() + 1; }
+
+    public boolean isComplete() { return passengers.size() >= totalPassengers; }
+
+    public Long getFlightId() { return flightId; }
+    public void setFlightId(Long flightId) { this.flightId = flightId; }
+
+    public String getFlightNumber() { return flightNumber; }
+    public void setFlightNumber(String flightNumber) { this.flightNumber = flightNumber; }
+
+    public LocalDate getJourneyDate() { return journeyDate; }
+    public void setJourneyDate(LocalDate journeyDate) { this.journeyDate = journeyDate; }
+
+    public int getTotalPassengers() { return totalPassengers; }
+    public void setTotalPassengers(int totalPassengers) { this.totalPassengers = totalPassengers; }
+
+    public List<PassengerForm> getPassengers() { return passengers; }
+    public void setPassengers(List<PassengerForm> passengers) { this.passengers = passengers; }
+}
