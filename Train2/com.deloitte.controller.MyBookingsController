@@ -1,0 +1,109 @@
+package com.deloitte.controller;
+
+import java.time.LocalDate;
+import java.util.List;
+import javax.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.deloitte.dao.FlightDao;
+import com.deloitte.exception.BookingNotFoundException;
+import com.deloitte.exception.CancellationNotAllowedException;
+import com.deloitte.model.Booking;
+import com.deloitte.model.Ticket;
+import com.deloitte.model.User;
+import com.deloitte.service.BookingService;
+
+@Controller
+public class MyBookingsController {
+
+    @Autowired
+    private BookingService bookingService;
+
+    @Autowired
+    private FlightDao flightDao;
+
+    // Returns the logged-in USER, or null if not logged in / is an admin
+    private User getUser(HttpSession session) {
+        User user = (User) session.getAttribute("loggedInUser");
+        if (user == null || "ADMIN".equalsIgnoreCase(user.getRole())) {
+            return null;
+        }
+        return user;
+    }
+
+    @GetMapping("/user/bookings")
+    public String myBookings(HttpSession session, Model model) {
+        User user = getUser(session);
+        if (user == null) {
+            return "redirect:/login";
+        }
+        model.addAttribute("bookings", bookingService.getBookingsForUser(user.getUserId()));
+        return "my-bookings";
+    }
+
+    @GetMapping("/user/bookings/{bookingId}/tickets")
+    public String viewTickets(@PathVariable Long bookingId, HttpSession session,
+                              Model model, RedirectAttributes redirectAttrs) {
+        User user = getUser(session);
+        if (user == null) {
+            return "redirect:/login";
+        }
+        try {
+            Booking booking = bookingService.getBookingForUser(user.getUserId(), bookingId);
+            List<Ticket> tickets = bookingService.getTicketsForBooking(user.getUserId(), bookingId);
+
+            boolean bookingCancellable = "BOOKED".equals(booking.getStatus())
+                    && !booking.getJourneyDate().isBefore(LocalDate.now());
+
+            model.addAttribute("booking", booking);
+            model.addAttribute("flight", flightDao.findById(booking.getFlightId()));
+            model.addAttribute("tickets", tickets);
+            model.addAttribute("bookingCancellable", bookingCancellable);
+            return "view-tickets";
+
+        } catch (BookingNotFoundException e) {
+            redirectAttrs.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/user/bookings";
+        }
+    }
+
+    @PostMapping("/user/bookings/{bookingId}/cancel")
+    public String cancelBooking(@PathVariable Long bookingId, HttpSession session,
+                                RedirectAttributes redirectAttrs) {
+        User user = getUser(session);
+        if (user == null) {
+            return "redirect:/login";
+        }
+        try {
+            bookingService.cancelBooking(user.getUserId(), bookingId);
+            redirectAttrs.addFlashAttribute("successMessage",
+                    "Booking " + bookingId + " cancelled. Seats have been released.");
+        } catch (BookingNotFoundException | CancellationNotAllowedException e) {
+            redirectAttrs.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/user/bookings";
+    }
+
+    @PostMapping("/user/tickets/{pnrNo}/cancel")
+    public String cancelTicket(@PathVariable Long pnrNo,
+                               @org.springframework.web.bind.annotation.RequestParam Long bookingId,
+                               HttpSession session, RedirectAttributes redirectAttrs) {
+        User user = getUser(session);
+        if (user == null) {
+            return "redirect:/login";
+        }
+        try {
+            bookingService.cancelTicket(user.getUserId(), pnrNo);
+            redirectAttrs.addFlashAttribute("successMessage",
+                    "Ticket PNR " + pnrNo + " cancelled. Seat released.");
+        } catch (BookingNotFoundException | CancellationNotAllowedException e) {
+            redirectAttrs.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/user/bookings/" + bookingId + "/tickets";
+    }
+}
