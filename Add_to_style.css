@@ -1,0 +1,7 @@
+.flight-info {
+  background: #cff4fc;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.btn-secondary { background: var(--muted); color: #fff; }
