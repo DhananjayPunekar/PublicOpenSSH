@@ -1,0 +1,27 @@
+package com.deloitte.dto;
+
+import java.time.LocalDate;
+import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import org.springframework.format.annotation.DateTimeFormat;
+
+public class BookingForm {
+
+    @NotNull(message = "Journey date is required")
+    @FutureOrPresent(message = "Journey date cannot be in the past")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)   // matches <input type="date"> (yyyy-MM-dd)
+    private LocalDate journeyDate;
+
+    @NotNull(message = "Number of passengers is required")
+    @Min(value = 1, message = "At least 1 passenger is required")
+    @Max(value = 10, message = "Maximum 10 passengers allowed")
+    private Integer numberOfPassengers;
+
+    public LocalDate getJourneyDate() { return journeyDate; }
+    public void setJourneyDate(LocalDate journeyDate) { this.journeyDate = journeyDate; }
+
+    public Integer getNumberOfPassengers() { return numberOfPassengers; }
+    public void setNumberOfPassengers(Integer numberOfPassengers) { this.numberOfPassengers = numberOfPassengers; }
+}
