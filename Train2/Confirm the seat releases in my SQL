@@ -1,0 +1,1 @@
+SELECT pnr_no, seat_no, status FROM tbl_tickets ORDER BY pnr_no DESC LIMIT 5;
