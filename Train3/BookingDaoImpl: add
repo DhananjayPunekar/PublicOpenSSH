@@ -1,0 +1,31 @@
+@Override
+public List<JourneySummary> findJourneySummaries() {
+    // One row per flight per journey date, active bookings only.
+    // b.seats is already reduced when single tickets are cancelled.
+    String sql = "SELECT f.flight_number, f.source, f.destination, f.departure_time, "
+               + "b.journey_date, "
+               + "SUM(b.seats) AS total_passengers, "
+               + "COUNT(b.booking_id) AS total_bookings, "
+               + "SUM(b.total_price) AS total_revenue, "
+               + "DATEDIFF(b.journey_date, CURDATE()) AS days_until "
+               + "FROM tbl_bookings b "
+               + "JOIN tbl_flights f ON f.flight_id = b.flight_id "
+               + "WHERE b.status = 'BOOKED' "
+               + "GROUP BY f.flight_id, f.flight_number, f.source, f.destination, "
+               + "f.departure_time, b.journey_date "
+               + "ORDER BY b.journey_date, f.departure_time";
+
+    return jdbcTemplate.query(sql, (rs, i) -> {
+        JourneySummary s = new JourneySummary();
+        s.setFlightNumber(rs.getString("flight_number"));
+        s.setSource(rs.getString("source"));
+        s.setDestination(rs.getString("destination"));
+        s.setDepartureTime(rs.getString("departure_time"));
+        s.setJourneyDate(rs.getDate("journey_date").toLocalDate());
+        s.setTotalPassengers(rs.getInt("total_passengers"));
+        s.setTotalBookings(rs.getInt("total_bookings"));
+        s.setTotalRevenue(rs.getDouble("total_revenue"));
+        s.setDaysUntil(rs.getInt("days_until"));
+        return s;
+    });
+}
