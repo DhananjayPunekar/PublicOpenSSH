@@ -1,0 +1,8 @@
+By default Spring doesn't throw an exception for unknown URLs; it just returns Tomcat's 404 page. Turn that on.
+
+If your WebAppInitializer extends AbstractAnnotationConfigDispatcherServletInitializer, add:
+
+@Override
+protected void customizeRegistration(javax.servlet.ServletRegistration.Dynamic registration) {
+    registration.setInitParameter("throwExceptionIfNoHandlerFound", "true");
+}
