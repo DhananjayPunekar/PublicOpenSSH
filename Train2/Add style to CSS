@@ -1,0 +1,23 @@
+.badge { display: inline-block; padding: 3px 8px; border-radius: 10px;
+         font-size: 12px; font-weight: bold; color: #fff; }
+.badge-success { background: var(--success); }
+.badge-danger  { background: var(--danger); }
+.badge-info    { background: #0dcaf0; }
+.badge-dark    { background: var(--muted); }
+
+.btn-info     { background: #0dcaf0; color: #fff; }
+.btn-danger   { background: var(--danger); color: #fff; }
+.btn-disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.table form   { margin: 0; }
+
+.ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.ticket-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+               overflow: hidden; padding-bottom: 12px; }
+.ticket-cancelled { opacity: 0.6; }
+.ticket-header { background: #0d6efd; color: #fff; padding: 10px 14px;
+                 display: flex; justify-content: space-between; font-weight: bold; }
+.pnr { background: #fff; color: #0d6efd; border-radius: 10px; padding: 1px 8px; font-size: 12px; }
+.ticket-section { padding: 10px 14px 0; }
+.ticket-label { color: #0d6efd; font-weight: bold; font-size: 13px; margin-bottom: 6px; }
+.ticket-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.ticket-card form { padding: 0 14px; }
