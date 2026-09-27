@@ -1,0 +1,15 @@
+@Override
+public List<JourneySummary> getUpcomingJourneys() {
+    return bookingDao.findJourneySummaries().stream()
+            .filter(s -> s.getDaysUntil() >= 0)             // today counts as upcoming
+            .collect(java.util.stream.Collectors.toList());
+}
+
+@Override
+public List<JourneySummary> getCompletedJourneys() {
+    List<JourneySummary> past = bookingDao.findJourneySummaries().stream()
+            .filter(s -> s.getDaysUntil() < 0)
+            .collect(java.util.stream.Collectors.toList());
+    java.util.Collections.reverse(past);                   // most recent first
+    return past;
+}
