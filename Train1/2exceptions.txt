@@ -1,0 +1,16 @@
+package com.deloitte.exception;
+
+public class BookingNotFoundException extends RuntimeException {
+    public BookingNotFoundException() {
+        super("Booking or ticket not found.");
+    }
+}
+
+
+package com.deloitte.exception;
+
+public class CancellationNotAllowedException extends RuntimeException {
+    public CancellationNotAllowedException(String message) {
+        super(message);
+    }
+}
