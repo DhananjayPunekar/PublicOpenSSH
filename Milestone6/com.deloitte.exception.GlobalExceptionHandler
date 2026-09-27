@@ -1,0 +1,89 @@
+package com.deloitte.exception;
+
+import javax.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.NoHandlerFoundException;
+
+/**
+ * Central place for handling any exception a controller doesn't catch itself.
+ * Users see a friendly error page; the full details go to the log.
+ */
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // 404 - flight / booking / ticket doesn't exist (or isn't the user's)
+    @ExceptionHandler({ FlightNotFoundException.class, BookingNotFoundException.class })
+    public ModelAndView handleNotFound(RuntimeException ex, HttpServletRequest request) {
+        log.warn("Not found at {}: {}", request.getRequestURI(), ex.getMessage());
+        return errorPage(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+
+    // 409 - business rule broken (no seats, already cancelled, duplicates...)
+    @ExceptionHandler({ SeatsNotAvailableException.class, CancellationNotAllowedException.class,
+                        DuplicateEmailException.class, DuplicateFlightException.class })
+    public ModelAndView handleBusinessRule(RuntimeException ex, HttpServletRequest request) {
+        log.warn("Business rule at {}: {}", request.getRequestURI(), ex.getMessage());
+        return errorPage(HttpStatus.CONFLICT, "Request Not Allowed", ex.getMessage());
+    }
+
+    // 400 - bad URL, e.g. /booking/new without flightId, or flightId=abc
+    @ExceptionHandler({ MissingServletRequestParameterException.class,
+                        MethodArgumentTypeMismatchException.class })
+    public ModelAndView handleBadRequest(Exception ex, HttpServletRequest request) {
+        log.warn("Bad request at {}: {}", request.getRequestURI(), ex.getMessage());
+        return errorPage(HttpStatus.BAD_REQUEST, "Invalid Request",
+                "The link you followed is incomplete or invalid.");
+    }
+
+    // 405 - e.g. opening a POST-only URL like /user/bookings/5/cancel in the browser
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ModelAndView handleMethodNotAllowed(Exception ex, HttpServletRequest request) {
+        log.warn("Method not allowed at {}: {}", request.getRequestURI(), ex.getMessage());
+        return errorPage(HttpStatus.METHOD_NOT_ALLOWED, "Action Not Allowed",
+                "This action can't be performed from the address bar.");
+    }
+
+    // 404 - URL that no controller handles (needs the WebAppInitializer setting below)
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ModelAndView handleNoHandler(NoHandlerFoundException ex) {
+        log.warn("No page for {} {}", ex.getHttpMethod(), ex.getRequestURL());
+        return errorPage(HttpStatus.NOT_FOUND, "Page Not Found",
+                "The page you are looking for doesn't exist.");
+    }
+
+    // 500 - database problems (MySQL down, bad SQL, constraint errors)
+    @ExceptionHandler(DataAccessException.class)
+    public ModelAndView handleDatabase(DataAccessException ex, HttpServletRequest request) {
+        log.error("Database error at {}", request.getRequestURI(), ex);   // full stack trace in log
+        return errorPage(HttpStatus.INTERNAL_SERVER_ERROR, "Service Unavailable",
+                "We couldn't reach our database. Please try again in a moment.");
+    }
+
+    // 500 - anything else we didn't expect
+    @ExceptionHandler(Exception.class)
+    public ModelAndView handleEverythingElse(Exception ex, HttpServletRequest request) {
+        log.error("Unexpected error at {}", request.getRequestURI(), ex);
+        return errorPage(HttpStatus.INTERNAL_SERVER_ERROR, "Something Went Wrong",
+                "An unexpected error occurred. Please try again.");
+    }
+
+    private ModelAndView errorPage(HttpStatus status, String title, String message) {
+        ModelAndView mav = new ModelAndView("error");
+        mav.setStatus(status);
+        mav.addObject("status", status.value());
+        mav.addObject("title", title);
+        mav.addObject("message", message);
+        return mav;
+    }
+}
