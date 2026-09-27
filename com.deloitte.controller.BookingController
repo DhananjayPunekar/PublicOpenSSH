@@ -1,0 +1,103 @@
+package com.deloitte.controller;
+
+import java.time.LocalDate;
+import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import com.deloitte.dao.FlightDao;
+import com.deloitte.dto.BookingDraft;
+import com.deloitte.dto.BookingForm;
+import com.deloitte.model.Flight;
+import com.deloitte.model.User;
+import com.deloitte.service.BookingService;
+
+@Controller
+public class BookingController {
+
+    @Autowired
+    private BookingService bookingService;
+
+    @Autowired
+    private FlightDao flightDao;
+
+    private User getUser(HttpSession session) {
+        return (User) session.getAttribute("loggedInUser");
+    }
+
+    @GetMapping("/booking/new")
+    public String showBookingForm(@RequestParam("flightId") Long flightId,
+                                  HttpSession session, Model model) {
+        User user = getUser(session);
+
+        // Not logged in: remember the flight, send to login
+        if (user == null) {
+            session.setAttribute("pendingFlightId", flightId);
+            return "redirect:/login";
+        }
+        // Admins manage flights; only users book
+        if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+            return "redirect:/admin/dashboard";
+        }
+
+        Flight flight = flightDao.findById(flightId);
+        if (flight == null) {
+            return "redirect:/home";
+        }
+
+        model.addAttribute("flight", flight);
+        model.addAttribute("bookingForm", new BookingForm());
+        model.addAttribute("today", LocalDate.now());
+        return "booking-form";
+    }
+
+    @PostMapping("/booking/new")
+    public String processBookingForm(@RequestParam("flightId") Long flightId,
+                                     @Valid @ModelAttribute("bookingForm") BookingForm form,
+                                     BindingResult result,
+                                     HttpSession session, Model model) {
+        User user = getUser(session);
+        if (user == null) {
+            session.setAttribute("pendingFlightId", flightId);
+            return "redirect:/login";
+        }
+
+        Flight flight = flightDao.findById(flightId);
+        if (flight == null) {
+            return "redirect:/home";
+        }
+
+        // Re-add page data in case we redisplay the form
+        model.addAttribute("flight", flight);
+        model.addAttribute("today", LocalDate.now());
+
+        if (result.hasErrors()) {
+            return "booking-form";
+        }
+
+        // Seat availability check (spec: available < passengers -> show error)
+        int available = bookingService.getAvailableSeats(flightId, form.getJourneyDate());
+        if (available < form.getNumberOfPassengers()) {
+            model.addAttribute("bookingError",
+                    "Only " + available + " seat(s) available on " + form.getJourneyDate()
+                    + ". Please reduce the number of passengers or pick another date.");
+            return "booking-form";
+        }
+
+        // Seats OK: start a draft in the session and move to the passenger screens
+        BookingDraft draft = new BookingDraft();
+        draft.setFlightId(flightId);
+        draft.setFlightNumber(flight.getFlightNumber());
+        draft.setJourneyDate(form.getJourneyDate());
+        draft.setTotalPassengers(form.getNumberOfPassengers());
+        session.setAttribute("bookingDraft", draft);
+
+        return "redirect:/booking/passenger";
+    }
+}
