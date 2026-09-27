@@ -1,0 +1,18 @@
+@Autowired
+private BookingService bookingService;
+
+@GetMapping("/admin/flights")
+public String viewFlights(@RequestParam(value = "tab", defaultValue = "upcoming") String tab,
+                          HttpSession session, Model model) {
+    if (!isAdmin(session)) {
+        return "redirect:/login";
+    }
+    List<JourneySummary> upcoming = bookingService.getUpcomingJourneys();
+    List<JourneySummary> completed = bookingService.getCompletedJourneys();
+
+    model.addAttribute("upcoming", upcoming);
+    model.addAttribute("completed", completed);
+    model.addAttribute("activeTab", "completed".equals(tab) ? "completed" : "upcoming");
+    model.addAttribute("today", java.time.LocalDate.now());
+    return "view-flights";
+}
