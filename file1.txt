@@ -1,0 +1,101 @@
+package com.deloitte.service;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.deloitte.dao.BookingDao;
+import com.deloitte.dao.FlightDao;
+import com.deloitte.dto.PassengerForm;
+import com.deloitte.exception.FlightNotFoundException;
+import com.deloitte.exception.SeatsNotAvailableException;
+import com.deloitte.model.Booking;
+import com.deloitte.model.Flight;
+import com.deloitte.model.Ticket;
+
+@Service
+public class BookingServiceImpl implements BookingService {
+
+    private static final String STATUS_BOOKED = "BOOKED";
+
+    @Autowired
+    private BookingDao bookingDao;
+
+    @Autowired
+    private FlightDao flightDao;
+
+    @Override
+    public int getAvailableSeats(Long flightId, LocalDate journeyDate) {
+        Flight flight = flightDao.findById(flightId);
+        if (flight == null) {
+            throw new FlightNotFoundException(flightId);
+        }
+        int booked = bookingDao.countBookedSeats(flightId, journeyDate);
+        return flight.getCapacity() - booked;
+    }
+
+    @Override
+    @Transactional   // booking + all tickets are saved together, or nothing is saved
+    public Long createBooking(Long userId, Long flightId, LocalDate journeyDate,
+                              List<PassengerForm> passengers) {
+
+        Flight flight = flightDao.findById(flightId);
+        if (flight == null) {
+            throw new FlightNotFoundException(flightId);
+        }
+
+        // Re-check availability: someone else may have booked while the user filled in passengers
+        int requested = passengers.size();
+        int available = flight.getCapacity() - bookingDao.countBookedSeats(flightId, journeyDate);
+        if (requested > available) {
+            throw new SeatsNotAvailableException(requested, available);
+        }
+
+        // 1. Save the booking row
+        Booking booking = new Booking();
+        booking.setBookingDate(LocalDate.now());
+        booking.setJourneyDate(journeyDate);
+        booking.setSeats(requested);
+        booking.setTotalPrice(requested * flight.getPricePerSeat());
+        booking.setStatus(STATUS_BOOKED);
+        booking.setFlightId(flightId);
+        booking.setUserId(userId);
+        Long bookingId = bookingDao.saveBooking(booking);
+
+        // 2. Pick the lowest free seat numbers (A1, A2, ...) — cancelled seats get reused
+        List<String> freeSeats = findFreeSeats(flightId, journeyDate, flight.getCapacity(), requested);
+
+        // 3. Save one ticket per passenger
+        for (int i = 0; i < requested; i++) {
+            PassengerForm p = passengers.get(i);
+            Ticket ticket = new Ticket();
+            ticket.setPassengerName(p.getPassengerName().trim());
+            ticket.setAge(p.getAge());
+            ticket.setGender(p.getGender());
+            ticket.setJourneyDate(journeyDate);
+            ticket.setSeatNo(freeSeats.get(i));
+            ticket.setBookingId(bookingId);
+            ticket.setStatus(STATUS_BOOKED);
+            bookingDao.saveTicket(ticket);
+        }
+
+        return bookingId;
+    }
+
+    private List<String> findFreeSeats(Long flightId, LocalDate journeyDate,
+                                       int capacity, int needed) {
+        Set<String> taken = new HashSet<>(bookingDao.findBookedSeatNumbers(flightId, journeyDate));
+        List<String> free = new ArrayList<>();
+        for (int seat = 1; seat <= capacity && free.size() < needed; seat++) {
+            String seatNo = "A" + seat;
+            if (!taken.contains(seatNo)) {
+                free.add(seatNo);
+            }
+        }
+        return free;
+    }
+}
