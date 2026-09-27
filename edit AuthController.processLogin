@@ -1,0 +1,11 @@
+// If the user clicked "Book" before logging in, take them back to that flight
+        Object pending = session.getAttribute("pendingFlightId");
+        if (pending != null && !"ADMIN".equalsIgnoreCase(user.getRole())) {
+            session.removeAttribute("pendingFlightId");
+            return "redirect:/booking/new?flightId=" + pending;
+        }
+
+        if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+            return "redirect:/admin/dashboard";
+        }
+        return "redirect:/user/dashboard";
