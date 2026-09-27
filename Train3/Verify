@@ -1,0 +1,4 @@
+To see the Completed tab with data, move one booking into the past in MySQL:
+
+UPDATE tbl_bookings SET journey_date = CURDATE() - INTERVAL 3 DAY WHERE booking_id = <an id>;
+UPDATE tbl_tickets  SET journey_date = CURDATE() - INTERVAL 3 DAY WHERE booking_id = <same id>;
