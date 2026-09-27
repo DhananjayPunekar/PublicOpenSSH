@@ -1,0 +1,79 @@
+@GetMapping("/booking/passenger")
+public String showPassengerForm(HttpSession session, Model model) {
+    if (getUser(session) == null) {
+        return "redirect:/login";
+    }
+    BookingDraft draft = (BookingDraft) session.getAttribute("bookingDraft");
+    if (draft == null) {
+        return "redirect:/home";          // no booking in progress
+    }
+    model.addAttribute("passengerForm", new PassengerForm());
+    addProgress(draft, model);
+    return "add-passenger";
+}
+
+@PostMapping("/booking/passenger")
+public String processPassenger(@Valid @ModelAttribute("passengerForm") PassengerForm form,
+                               BindingResult result,
+                               HttpSession session, Model model,
+                               RedirectAttributes redirectAttrs) {
+    User user = getUser(session);
+    if (user == null) {
+        return "redirect:/login";
+    }
+    BookingDraft draft = (BookingDraft) session.getAttribute("bookingDraft");
+    if (draft == null) {
+        return "redirect:/home";
+    }
+
+    if (result.hasErrors()) {
+        addProgress(draft, model);
+        return "add-passenger";
+    }
+
+    draft.getPassengers().add(form);
+
+    // More passengers to go: show the next screen
+    if (!draft.isComplete()) {
+        return "redirect:/booking/passenger";
+    }
+
+    // Last passenger: save booking + tickets in one transaction
+    try {
+        Long bookingId = bookingService.createBooking(
+                user.getUserId(), draft.getFlightId(),
+                draft.getJourneyDate(), draft.getPassengers());
+        session.removeAttribute("bookingDraft");
+        redirectAttrs.addFlashAttribute("bookingId", bookingId);
+        return "redirect:/booking/confirmation";
+
+    } catch (SeatsNotAvailableException e) {
+        // Seats were taken while the passengers were being entered
+        session.removeAttribute("bookingDraft");
+        redirectAttrs.addFlashAttribute("bookingError", e.getMessage());
+        return "redirect:/booking/new?flightId=" + draft.getFlightId();
+    }
+}
+
+@GetMapping("/booking/confirmation")
+public String showConfirmation(Model model, HttpSession session) {
+    if (getUser(session) == null) {
+        return "redirect:/login";
+    }
+    // bookingId arrives as a flash attribute; refreshing the page loses it
+    if (!model.containsAttribute("bookingId")) {
+        return "redirect:/user/dashboard";
+    }
+    return "booking-confirmation";
+}
+
+// Values for the "Add Passenger N" header and progress bar
+private void addProgress(BookingDraft draft, Model model) {
+    int total = draft.getTotalPassengers();
+    int done = draft.getPassengers().size();
+    model.addAttribute("currentNumber", done + 1);
+    model.addAttribute("totalPassengers", total);
+    model.addAttribute("remaining", total - done);
+    model.addAttribute("progress", done * 100 / total);
+    model.addAttribute("isLast", done + 1 == total);
+}
