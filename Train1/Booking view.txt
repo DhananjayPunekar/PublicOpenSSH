@@ -1,0 +1,16 @@
+package com.deloitte.dto;
+
+import java.time.LocalDate;
+
+public class BookingView {
+    private Long bookingId;
+    private String flightNumber;
+    private String source;
+    private String destination;
+    private LocalDate journeyDate;
+    private int seats;
+    private double totalPrice;
+    private String status;
+
+    // Source -> Generate Getters and Setters
+}
