@@ -1,0 +1,4 @@
+// Cancel is allowed only for active bookings whose journey hasn't passed
+public boolean isCancellable() {
+    return "BOOKED".equals(status) && !journeyDate.isBefore(java.time.LocalDate.now());
+}
