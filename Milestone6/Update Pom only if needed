@@ -1,0 +1,7 @@
+If org.slf4j shows red: your Console output (11:10:52.895 [http-nio-8080-exec-1] DEBUG ...) looks like Logback, which includes SLF4J, so it should resolve. If it doesn't, add this to pom.xml and update Maven:
+
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>slf4j-api</artifactId>
+  <version>1.7.36</version>
+</dependency>
