@@ -1,0 +1,63 @@
+List<BookingView> getBookingsForUser(Long userId);
+List<Ticket> getTicketsForBooking(Long userId, Long bookingId);
+void cancelBooking(Long userId, Long bookingId);
+void cancelTicket(Long userId, Long pnrNo);
+
+
+@Override
+public List<BookingView> getBookingsForUser(Long userId) {
+    return bookingDao.findBookingsByUser(userId);
+}
+
+@Override
+public List<Ticket> getTicketsForBooking(Long userId, Long bookingId) {
+    getOwnedBooking(userId, bookingId);           // throws if not theirs
+    return bookingDao.findTicketsByBooking(bookingId);
+}
+
+@Override
+@Transactional
+public void cancelBooking(Long userId, Long bookingId) {
+    Booking booking = getOwnedBooking(userId, bookingId);
+    checkCancellable(booking);
+    bookingDao.cancelBooking(bookingId);
+}
+
+@Override
+@Transactional
+public void cancelTicket(Long userId, Long pnrNo) {
+    Ticket ticket = bookingDao.findTicketByPnr(pnrNo);
+    if (ticket == null) {
+        throw new BookingNotFoundException();
+    }
+    Booking booking = getOwnedBooking(userId, ticket.getBookingId());
+    checkCancellable(booking);
+    if (!STATUS_BOOKED.equals(ticket.getStatus())) {
+        throw new CancellationNotAllowedException("This ticket is already cancelled.");
+    }
+
+    bookingDao.cancelTicket(pnrNo);
+
+    // Last active ticket cancelled -> the whole booking becomes CANCELLED
+    if (bookingDao.countActiveTickets(booking.getBookingId()) == 0) {
+        bookingDao.cancelBooking(booking.getBookingId());
+    }
+}
+
+// A user may only see or cancel their own bookings
+private Booking getOwnedBooking(Long userId, Long bookingId) {
+    Booking booking = bookingDao.findBookingById(bookingId);
+    if (booking == null || !booking.getUserId().equals(userId)) {
+        throw new BookingNotFoundException();
+    }
+    return booking;
+}
+
+private void checkCancellable(Booking booking) {
+    if (!STATUS_BOOKED.equals(booking.getStatus())) {
+        throw new CancellationNotAllowedException("This booking is already cancelled.");
+    }
+    if (booking.getJourneyDate().isBefore(LocalDate.now())) {
+        throw new CancellationNotAllowedException("Past journeys cannot be cancelled.");
+    }
+}
