@@ -1,0 +1,105 @@
+List<BookingView> findBookingsByUser(Long userId);
+Booking findBookingById(Long bookingId);
+List<Ticket> findTicketsByBooking(Long bookingId);
+Ticket findTicketByPnr(Long pnrNo);
+void cancelBooking(Long bookingId);
+void cancelTicket(Long pnrNo);
+int countActiveTickets(Long bookingId);
+
+
+@Override
+public List<BookingView> findBookingsByUser(Long userId) {
+    String sql = "SELECT b.booking_id, f.flight_number, f.source, f.destination, "
+               + "b.journey_date, b.seats, b.total_price, b.status "
+               + "FROM tbl_bookings b "
+               + "JOIN tbl_flights f ON f.flight_id = b.flight_id "
+               + "WHERE b.user_id = ? "
+               + "ORDER BY b.booking_id DESC";
+    return jdbcTemplate.query(sql, (rs, i) -> {
+        BookingView v = new BookingView();
+        v.setBookingId(rs.getLong("booking_id"));
+        v.setFlightNumber(rs.getString("flight_number"));
+        v.setSource(rs.getString("source"));
+        v.setDestination(rs.getString("destination"));
+        v.setJourneyDate(rs.getDate("journey_date").toLocalDate());
+        v.setSeats(rs.getInt("seats"));
+        v.setTotalPrice(rs.getDouble("total_price"));
+        v.setStatus(rs.getString("status"));
+        return v;
+    }, userId);
+}
+
+@Override
+public Booking findBookingById(Long bookingId) {
+    String sql = "SELECT booking_id, booking_date, journey_date, seats, total_price, "
+               + "status, flight_id, user_id FROM tbl_bookings WHERE booking_id = ?";
+    List<Booking> list = jdbcTemplate.query(sql, (rs, i) -> {
+        Booking b = new Booking();
+        b.setBookingId(rs.getLong("booking_id"));
+        b.setBookingDate(rs.getDate("booking_date").toLocalDate());
+        b.setJourneyDate(rs.getDate("journey_date").toLocalDate());
+        b.setSeats(rs.getInt("seats"));
+        b.setTotalPrice(rs.getDouble("total_price"));
+        b.setStatus(rs.getString("status"));
+        b.setFlightId(rs.getLong("flight_id"));
+        b.setUserId(rs.getLong("user_id"));
+        return b;
+    }, bookingId);
+    return list.isEmpty() ? null : list.get(0);
+}
+
+// Reused by findTicketsByBooking and findTicketByPnr
+private final RowMapper<Ticket> ticketRowMapper = (rs, i) -> {
+    Ticket t = new Ticket();
+    t.setPnrNo(rs.getLong("pnr_no"));
+    t.setPassengerName(rs.getString("passenger_name"));
+    t.setGender(rs.getString("gender"));
+    t.setAge(rs.getInt("age"));
+    t.setJourneyDate(rs.getDate("journey_date").toLocalDate());
+    t.setSeatNo(rs.getString("seat_no"));
+    t.setBookingId(rs.getLong("booking_id"));
+    t.setStatus(rs.getString("status"));
+    return t;
+};
+
+@Override
+public List<Ticket> findTicketsByBooking(Long bookingId) {
+    String sql = "SELECT * FROM tbl_tickets WHERE booking_id = ? ORDER BY pnr_no";
+    return jdbcTemplate.query(sql, ticketRowMapper, bookingId);
+}
+
+@Override
+public Ticket findTicketByPnr(Long pnrNo) {
+    String sql = "SELECT * FROM tbl_tickets WHERE pnr_no = ?";
+    List<Ticket> list = jdbcTemplate.query(sql, ticketRowMapper, pnrNo);
+    return list.isEmpty() ? null : list.get(0);
+}
+
+// Cancels the booking and all of its active tickets
+@Override
+public void cancelBooking(Long bookingId) {
+    jdbcTemplate.update("UPDATE tbl_tickets SET status = 'CANCELLED' "
+                      + "WHERE booking_id = ? AND status = 'BOOKED'", bookingId);
+    jdbcTemplate.update("UPDATE tbl_bookings SET status = 'CANCELLED' "
+                      + "WHERE booking_id = ?", bookingId);
+}
+
+// Cancels one ticket and reduces the booking's seats and price by one seat.
+// total_price is updated BEFORE seats, so it divides by the old seat count.
+@Override
+public void cancelTicket(Long pnrNo) {
+    Ticket t = findTicketByPnr(pnrNo);
+    jdbcTemplate.update("UPDATE tbl_tickets SET status = 'CANCELLED' WHERE pnr_no = ?", pnrNo);
+    jdbcTemplate.update("UPDATE tbl_bookings "
+                      + "SET total_price = total_price - (total_price / seats), "
+                      + "seats = seats - 1 "
+                      + "WHERE booking_id = ? AND seats > 0", t.getBookingId());
+}
+
+@Override
+public int countActiveTickets(Long bookingId) {
+    Integer n = jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM tbl_tickets WHERE booking_id = ? AND status = 'BOOKED'",
+        Integer.class, bookingId);
+    return n == null ? 0 : n;
+}
