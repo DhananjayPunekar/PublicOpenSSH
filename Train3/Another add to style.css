@@ -1,0 +1,6 @@
+.page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.tabs { display: flex; gap: 4px; margin: 16px 0 0; }
+.tab { padding: 10px 16px; text-decoration: none; color: var(--muted);
+       border: 1px solid transparent; border-bottom: none; border-radius: var(--radius) var(--radius) 0 0; }
+.tab-active { color: var(--dark); background: #fff; border-color: var(--border); font-weight: bold; }
+.tabs + .card { border-top-left-radius: 0; }
