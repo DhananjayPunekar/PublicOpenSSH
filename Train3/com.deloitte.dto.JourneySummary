@@ -1,0 +1,17 @@
+package com.deloitte.dto;
+
+import java.time.LocalDate;
+
+public class JourneySummary {
+    private String flightNumber;
+    private String source;
+    private String destination;
+    private String departureTime;
+    private LocalDate journeyDate;
+    private int totalPassengers;
+    private int totalBookings;
+    private double totalRevenue;
+    private int daysUntil;          // negative = days ago
+
+    // Source -> Generate Getters and Setters
+}
